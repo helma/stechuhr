@@ -1,0 +1,62 @@
+#!/usr/bin/env ruby
+require 'date'
+require 'csv'
+
+running = false
+sum = 0.0
+first_line = true
+logstart = nil
+logfile = File.join(ENV["HOME"],".local","share","stechuhr","stechuhr.csv")
+CSV.open(logfile).each do |line|
+  if first_line
+    logstart = DateTime.parse(line[0]).to_time
+    first_line = false
+  end
+  if line[1]
+    diff = DateTime.parse(line[1]).to_time - DateTime.parse(line[0]).to_time
+    sum += diff
+  else
+    running = true
+    diff = DateTime.now.to_time - DateTime.parse(line[0]).to_time
+    sum += diff
+  end
+end
+
+# until 1.8.2015
+# 246 business days/year
+# 5 weeks vacation
+# 10 hours/week
+hours_per_day = 10/5.0 * (249-5*5)/365.0
+period1 = Time.new(2015, 8, 1)
+days = (period1-logstart)/60/60/24
+planned_seconds = days * hours_per_day * 60 * 60
+
+# after 1.8.2015
+# 246 business days/year
+# 5 weeks vacation
+# 20 hours/week
+hours_per_day = 20/5.0 * (249-5*5)/365.0
+days = (Time.now-period1)/60/60/24
+planned_seconds += days * hours_per_day * 60 * 60
+
+diff = sum - planned_seconds
+puts "#{(diff/60/60).round(1)} hours"
+
+case ARGV[0]
+when "start"
+  if running
+    puts "already running ..."
+  else
+    File.open(logfile,"a+"){ |f| f.print "#{DateTime.now.to_s}," }
+    puts "started"
+  end
+when "stop"
+  if running
+    File.open(logfile,"a+"){ |f| f.puts "#{DateTime.now.to_s}" }
+    puts "stopped"
+  else
+    puts "already stopped ..."
+  end
+when "status"
+  running ? puts("running") : puts("stopped")
+end
